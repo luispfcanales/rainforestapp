@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/luispfcanales/rainforestapp/internal/models"
-	"github.com/luispfcanales/rainforestapp/internal/repository"
+	"github.com/luispfcanales/rainforestapp/pkg/models"
+	"github.com/luispfcanales/rainforestapp/pkg/repository"
 )
 
 // UsuarioService maneja la lógica de negocio de usuarios

@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/luispfcanales/rainforestapp/internal/config"
-	"github.com/luispfcanales/rainforestapp/internal/database"
-	"github.com/luispfcanales/rainforestapp/internal/models"
-	"github.com/luispfcanales/rainforestapp/internal/repository"
-	"github.com/luispfcanales/rainforestapp/internal/service"
+	"github.com/luispfcanales/rainforestapp/pkg/config"
+	"github.com/luispfcanales/rainforestapp/pkg/database"
+	"github.com/luispfcanales/rainforestapp/pkg/models"
+	"github.com/luispfcanales/rainforestapp/pkg/repository"
 	"github.com/luispfcanales/rainforestapp/pkg/response"
+	"github.com/luispfcanales/rainforestapp/pkg/service"
 )
 
 // UsuarioHandler maneja las peticiones HTTP para usuarios

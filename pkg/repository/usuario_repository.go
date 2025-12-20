@@ -7,7 +7,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 
-	"github.com/luispfcanales/rainforestapp/internal/models"
+	"github.com/luispfcanales/rainforestapp/pkg/models"
 )
 
 const usuariosCollection = "usuarios"

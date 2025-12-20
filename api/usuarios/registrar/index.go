@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/luispfcanales/rainforestapp/internal/config"
-	usuarioHandler "github.com/luispfcanales/rainforestapp/internal/handler"
+	"github.com/luispfcanales/rainforestapp/pkg/config"
+	usuarioHandler "github.com/luispfcanales/rainforestapp/pkg/handler"
 	"github.com/luispfcanales/rainforestapp/pkg/response"
 )
 

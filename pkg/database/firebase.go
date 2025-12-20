@@ -9,7 +9,7 @@ import (
 	firebase "firebase.google.com/go/v4"
 	"google.golang.org/api/option"
 
-	"github.com/luispfcanales/rainforestapp/internal/config"
+	"github.com/luispfcanales/rainforestapp/pkg/config"
 )
 
 var (
