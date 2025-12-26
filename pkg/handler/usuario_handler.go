@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/luispfcanales/rainforestapp/pkg/config"
 	"github.com/luispfcanales/rainforestapp/pkg/database"
 	"github.com/luispfcanales/rainforestapp/pkg/models"
+	"github.com/luispfcanales/rainforestapp/pkg/pdf"
 	"github.com/luispfcanales/rainforestapp/pkg/repository"
 	"github.com/luispfcanales/rainforestapp/pkg/response"
 	"github.com/luispfcanales/rainforestapp/pkg/service"
@@ -18,6 +20,7 @@ import (
 // UsuarioHandler maneja las peticiones HTTP para usuarios
 type UsuarioHandler struct {
 	service *service.UsuarioService
+	pdfGen  *pdf.PDFGenerator
 }
 
 // NewUsuarioHandler crea una nueva instancia del handler
@@ -34,8 +37,11 @@ func NewUsuarioHandler(cfg *config.Config) (*UsuarioHandler, error) {
 	repo := repository.NewUsuarioRepository(firestoreClient)
 	svc := service.NewUsuarioService(repo)
 
+	pdfGen := pdf.NewPDFGenerator()
+
 	return &UsuarioHandler{
 		service: svc,
+		pdfGen:  pdfGen,
 	}, nil
 }
 
@@ -145,4 +151,56 @@ func (h *UsuarioHandler) ListUsuarios(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.Success(w, "Usuarios obtenidos exitosamente", usuarios)
+}
+
+// GetUsuarioPDF maneja la obtención de un usuario específico en PDF
+func (h *UsuarioHandler) GetUsuarioPDF(w http.ResponseWriter, r *http.Request) {
+	setupCORS(w)
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != "GET" {
+		response.Error(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+
+	// Obtener ID del usuario desde query params
+	usuarioID := r.URL.Query().Get("id")
+	if usuarioID == "" {
+		response.Error(w, http.StatusBadRequest, "ID de usuario requerido")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	// Obtener usuario por ID
+	usuario, err := h.service.GetUsuario(ctx, usuarioID)
+	if err != nil {
+		log.Printf("Error obteniendo usuario: %v", err)
+		response.Error(w, http.StatusNotFound, "Usuario no encontrado")
+		return
+	}
+
+	// Generar PDF individual
+	pdfBytes, err := h.pdfGen.GenerateUsuarioPDFSimple(ctx, usuario)
+	if err != nil {
+		log.Printf("Error generando PDF: %v", err)
+		response.InternalServerError(w, "Error generando PDF")
+		return
+	}
+
+	// Configurar headers para descarga
+	w.Header().Set("Content-Type", "application/pdf")
+	filename := fmt.Sprintf("usuario_%s_%s_%s.pdf", usuario.Nombre, usuario.Apellido, time.Now().Format("20060102"))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+
+	// Escribir PDF en la respuesta
+	if _, err := w.Write(pdfBytes); err != nil {
+		log.Printf("Error escribiendo PDF: %v", err)
+	}
 }
