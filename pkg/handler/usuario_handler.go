@@ -92,7 +92,7 @@ func (h *UsuarioHandler) CreateUsuario(w http.ResponseWriter, r *http.Request) {
 	response.Created(w, "Usuario registrado exitosamente", usuario)
 }
 
-// GetUsuario maneja la obtención de un usuario por ID
+// GetUsuario maneja la obtención de un usuario por DNI
 func (h *UsuarioHandler) GetUsuario(w http.ResponseWriter, r *http.Request) {
 	setupCORS(w)
 
@@ -107,16 +107,16 @@ func (h *UsuarioHandler) GetUsuario(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Obtener ID de query params
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		response.BadRequest(w, "ID es requerido")
+	dni := r.URL.Query().Get("dni")
+	if dni == "" {
+		response.BadRequest(w, "DNI es requerido")
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	usuario, err := h.service.GetUsuario(ctx, id)
+	usuario, err := h.service.GetUsuarioByDNI(ctx, dni)
 	if err != nil {
 		log.Printf("Error obteniendo usuario: %v", err)
 		response.NotFound(w, "Usuario no encontrado")
@@ -168,9 +168,9 @@ func (h *UsuarioHandler) GetUsuarioPDF(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Obtener ID del usuario desde query params
-	usuarioID := r.URL.Query().Get("id")
-	if usuarioID == "" {
-		response.Error(w, http.StatusBadRequest, "ID de usuario requerido")
+	usuarioDNI := r.URL.Query().Get("dni")
+	if usuarioDNI == "" {
+		response.Error(w, http.StatusBadRequest, "DNI de usuario requerido")
 		return
 	}
 
@@ -178,7 +178,7 @@ func (h *UsuarioHandler) GetUsuarioPDF(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Obtener usuario por ID
-	usuario, err := h.service.GetUsuario(ctx, usuarioID)
+	usuario, err := h.service.GetUsuarioByDNI(ctx, usuarioDNI)
 	if err != nil {
 		log.Printf("Error obteniendo usuario: %v", err)
 		response.Error(w, http.StatusNotFound, "Usuario no encontrado")

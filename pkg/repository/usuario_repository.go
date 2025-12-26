@@ -51,6 +51,30 @@ func (r *UsuarioRepository) GetByID(ctx context.Context, id string) (*models.Usu
 	return &usuario, nil
 }
 
+// GetByDNI obtiene un usuario por su DNI
+func (r *UsuarioRepository) GetByDNI(ctx context.Context, dni string) (*models.Usuario, error) {
+	iter := r.client.Collection(usuariosCollection).
+		Where("dni", "==", dni).
+		Limit(1).
+		Documents(ctx)
+
+	doc, err := iter.Next()
+	if err == iterator.Done {
+		return nil, fmt.Errorf("usuario con email %s no encontrado", dni)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error buscando usuario por email: %w", err)
+	}
+
+	var usuario models.Usuario
+	if err := doc.DataTo(&usuario); err != nil {
+		return nil, fmt.Errorf("error parseando usuario: %w", err)
+	}
+
+	usuario.ID = doc.Ref.ID
+	return &usuario, nil
+}
+
 // GetAll obtiene todos los usuarios
 func (r *UsuarioRepository) GetAll(ctx context.Context, limit int) ([]*models.Usuario, error) {
 	query := r.client.Collection(usuariosCollection).OrderBy("created_at", firestore.Desc)

@@ -39,13 +39,13 @@ func (s *UsuarioService) CreateUsuario(ctx context.Context, req *models.CreateUs
 	return createdUsuario, nil
 }
 
-// GetUsuario obtiene un usuario por ID
-func (s *UsuarioService) GetUsuario(ctx context.Context, id string) (*models.Usuario, error) {
-	if id == "" {
+// GetUsuarioByDNI obtiene un usuario por DNI
+func (s *UsuarioService) GetUsuarioByDNI(ctx context.Context, dni string) (*models.Usuario, error) {
+	if dni == "" {
 		return nil, fmt.Errorf("ID es requerido")
 	}
 
-	usuario, err := s.repo.GetByID(ctx, id)
+	usuario, err := s.repo.GetByDNI(ctx, dni)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo usuario: %w", err)
 	}

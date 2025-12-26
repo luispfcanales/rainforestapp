@@ -12,6 +12,7 @@ type Usuario struct {
 	Nombre    string    `json:"nombre" firestore:"nombre"`
 	Apellido  string    `json:"apellido" firestore:"apellido"`
 	Email     string    `json:"email,omitempty" firestore:"email,omitempty"`
+	Dni       string    `json:"dni,omitempty" firestore:"dni,omitempty"`
 	Telefono  string    `json:"telefono,omitempty" firestore:"telefono,omitempty"`
 	CreatedAt time.Time `json:"created_at" firestore:"created_at"`
 	UpdatedAt time.Time `json:"updated_at,omitempty" firestore:"updated_at,omitempty"`
@@ -22,6 +23,7 @@ type CreateUsuarioRequest struct {
 	Nombre   string `json:"nombre"`
 	Apellido string `json:"apellido"`
 	Email    string `json:"email,omitempty"`
+	Dni      string `json:"dni"`
 	Telefono string `json:"telefono,omitempty"`
 }
 
@@ -48,6 +50,7 @@ func (u *CreateUsuarioRequest) ToUsuario() *Usuario {
 		Nombre:    strings.TrimSpace(u.Nombre),
 		Apellido:  strings.TrimSpace(u.Apellido),
 		Email:     strings.TrimSpace(u.Email),
+		Dni:       strings.TrimSpace(u.Dni),
 		Telefono:  strings.TrimSpace(u.Telefono),
 		CreatedAt: time.Now(),
 	}
