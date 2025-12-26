@@ -14,6 +14,7 @@ type Usuario struct {
 	Email     string    `json:"email,omitempty" firestore:"email,omitempty"`
 	Dni       string    `json:"dni,omitempty" firestore:"dni,omitempty"`
 	Telefono  string    `json:"telefono,omitempty" firestore:"telefono,omitempty"`
+	Foto      string    `json:"foto,omitempty" firestore:"foto,omitempty"`
 	CreatedAt time.Time `json:"created_at" firestore:"created_at"`
 	UpdatedAt time.Time `json:"updated_at,omitempty" firestore:"updated_at,omitempty"`
 }
@@ -25,6 +26,7 @@ type CreateUsuarioRequest struct {
 	Email    string `json:"email,omitempty"`
 	Dni      string `json:"dni"`
 	Telefono string `json:"telefono,omitempty"`
+	Foto     string `json:"foto,omitempty"`
 }
 
 // Validate valida los datos del usuario
@@ -52,6 +54,7 @@ func (u *CreateUsuarioRequest) ToUsuario() *Usuario {
 		Email:     strings.TrimSpace(u.Email),
 		Dni:       strings.TrimSpace(u.Dni),
 		Telefono:  strings.TrimSpace(u.Telefono),
+		Foto:      strings.TrimSpace(u.Foto),
 		CreatedAt: time.Now(),
 	}
 }
