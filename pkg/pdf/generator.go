@@ -2,19 +2,24 @@ package pdf
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/johnfercher/maroto/v2"
 	"github.com/johnfercher/maroto/v2/pkg/components/col"
+	"github.com/johnfercher/maroto/v2/pkg/components/image"
 	"github.com/johnfercher/maroto/v2/pkg/components/line"
 	"github.com/johnfercher/maroto/v2/pkg/components/row"
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
 	"github.com/johnfercher/maroto/v2/pkg/config"
 	"github.com/johnfercher/maroto/v2/pkg/consts/align"
+	"github.com/johnfercher/maroto/v2/pkg/consts/extension"
 	"github.com/johnfercher/maroto/v2/pkg/consts/fontstyle"
 	"github.com/johnfercher/maroto/v2/pkg/consts/orientation"
 	"github.com/johnfercher/maroto/v2/pkg/consts/pagesize"
+	"github.com/johnfercher/maroto/v2/pkg/core"
 	"github.com/johnfercher/maroto/v2/pkg/props"
 	"github.com/luispfcanales/rainforestapp/pkg/models"
 )
@@ -42,15 +47,26 @@ func getTextColor() *props.Color {
 	}
 }
 
-func getLightColor() *props.Color {
-	return &props.Color{
-		Red:   240,
-		Green: 240,
-		Blue:  240,
+// decodeBase64Image decodifica el string base64 a bytes
+func decodeBase64Image(base64Str string) ([]byte, error) {
+	// Remover el prefijo data:image/jpeg;base64, si existe
+	if strings.Contains(base64Str, "base64,") {
+		parts := strings.Split(base64Str, "base64,")
+		if len(parts) > 1 {
+			base64Str = parts[1]
+		}
 	}
+
+	// Decodificar base64
+	imgBytes, err := base64.StdEncoding.DecodeString(base64Str)
+	if err != nil {
+		return nil, fmt.Errorf("error decodificando base64: %w", err)
+	}
+
+	return imgBytes, nil
 }
 
-// GenerateUsuarioPDFSimple - Versión simple basada en la documentación
+// GenerateUsuarioPDFSimple - Versión simple con imagen en cabecera
 func (g *PDFGenerator) GenerateUsuarioPDFSimple(ctx context.Context, usuario *models.Usuario) ([]byte, error) {
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
@@ -63,16 +79,45 @@ func (g *PDFGenerator) GenerateUsuarioPDFSimple(ctx context.Context, usuario *mo
 
 	m := maroto.New(cfg)
 
-	// Header
+	// Header con imagen a la derecha
 	m.AddRows(
-		row.New(20).Add(
-			col.New(12).Add(
+		row.New(25).Add(
+			// Columna para el título (izquierda - 9 columnas)
+			col.New(9).Add(
 				text.New("RAINFOREST ENTERPRISE", props.Text{
 					Size:  18,
 					Style: fontstyle.Bold,
-					Align: align.Center,
+					Align: align.Left,
 					Color: getHeaderColor(),
+					Top:   5,
 				}),
+				text.New("FICHA DE USUARIO", props.Text{
+					Size:  12,
+					Align: align.Left,
+					Top:   12,
+				}),
+			),
+			// Columna para la foto carnet (derecha - 3 columnas)
+			col.New(3).Add(
+				func() core.Component {
+					if usuario.Foto != "" && usuario.Foto != "null" && usuario.Foto != "undefined" {
+						imgBytes, err := decodeBase64Image(usuario.Foto)
+						if err == nil {
+							// Especificar el tipo de extensión (JPEG o PNG)
+							return image.NewFromBytes(imgBytes, extension.Jpg, props.Rect{
+								Percent: 80,
+								Center:  true,
+							})
+						}
+					}
+
+					// Si no hay foto, mostrar placeholder
+					return text.New("Sin Foto", props.Text{
+						Size:  8,
+						Align: align.Center,
+						Color: getTextColor(),
+					})
+				}(),
 			),
 		),
 	)
@@ -93,29 +138,13 @@ func (g *PDFGenerator) GenerateUsuarioPDFSimple(ctx context.Context, usuario *mo
 	m.AddRows(
 		row.New(15).Add(
 			col.New(12).Add(
-				text.New("FICHA DE USUARIO", props.Text{
+				text.New("INFORMACIÓN DEL USUARIO", props.Text{
 					Size:  14,
 					Style: fontstyle.Bold,
 					Align: align.Center,
 				}),
 			),
 		),
-	)
-
-	// User Info Header
-	m.AddRows(
-		row.New(8).Add(
-			col.New(12).Add(
-				text.New("Información del Usuario", props.Text{
-					Size:  12,
-					Style: fontstyle.Bold,
-					Align: align.Center,
-					Color: &props.WhiteColor,
-				}),
-			),
-		).WithStyle(&props.Cell{
-			BackgroundColor: getHeaderColor(),
-		}),
 	)
 
 	// User Data
