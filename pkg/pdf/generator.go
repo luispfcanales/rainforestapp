@@ -2,9 +2,9 @@ package pdf
 
 import (
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -24,6 +24,9 @@ import (
 	"github.com/johnfercher/maroto/v2/pkg/props"
 	"github.com/luispfcanales/rainforestapp/pkg/models"
 )
+
+//go:embed rainforest.png
+var logoBytes []byte
 
 type PDFGenerator struct{}
 
@@ -67,7 +70,7 @@ func decodeBase64Image(base64Str string) ([]byte, error) {
 	return imgBytes, nil
 }
 
-// GenerateUsuarioPDF - Versión mejorada con diseño profesional
+// GenerateUsuarioPDF - Versión mejorada con diseño profesional (Cuadros)
 func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.Usuario) ([]byte, error) {
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
@@ -86,19 +89,8 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 			// Logo (Izquierda)
 			col.New(3).Add(
 				func() core.Component {
-					// Intentar cargar el logo - búsqueda en varias rutas
-					paths := []string{"rainforest.png", "./rainforest.png", "../../rainforest.png", "../rainforest.png"}
-					var imgBytes []byte
-					var err error
-					for _, path := range paths {
-						imgBytes, err = os.ReadFile(path)
-						if err == nil {
-							break
-						}
-					}
-
-					if len(imgBytes) > 0 {
-						return image.NewFromBytes(imgBytes, extension.Png, props.Rect{
+					if len(logoBytes) > 0 {
+						return image.NewFromBytes(logoBytes, extension.Png, props.Rect{
 							Center:  true,
 							Percent: 90,
 						})
@@ -138,7 +130,6 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 							})
 						}
 					}
-					// Cuadro "Sin Foto"
 					return text.New("[ SIN FOTO ]", props.Text{
 						Size:  10,
 						Style: fontstyle.BoldItalic,
@@ -149,27 +140,12 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 				}(),
 			),
 		),
-	)
-
-	m.AddRows(
 		row.New(5),
-		row.New(2).Add(
-			col.New(12).Add(line.New(props.Line{Color: getHeaderColor(), Thickness: 2})),
-		),
+		row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getHeaderColor(), Thickness: 2}))),
 		row.New(5),
 	)
 
-	// Helper para pares etiqueta-valor
-	addProp := func(label, value string) core.Component {
-		if value == "" {
-			value = "-"
-		}
-		return text.New(fmt.Sprintf("%s: %s", label, value), props.Text{
-			Size:  9,
-			Align: align.Left,
-		})
-	}
-
+	// Helpers
 	formatBool := func(b bool) string {
 		if b {
 			return "Si"
@@ -177,189 +153,255 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 		return "No"
 	}
 
+	headerTextStyle := props.Text{Style: fontstyle.Bold, Size: 9, Align: align.Center}
+	cellTextStyle := props.Text{Size: 8, Align: align.Center}
+
+	// Helper para Sección Título
+	addSectionTitle := func(title string) {
+		m.AddRows(
+			row.New(8).Add(col.New(12).Add(text.New(title, props.Text{
+				Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(), Top: 1,
+			}))),
+			row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getHeaderColor(), Thickness: 1}))),
+			row.New(3),
+		)
+	}
+
+	// Helper para celda con borde simulado (Label: Value)
+	addLabelValue := func(label, value string) core.Component {
+		if value == "" {
+			value = "-"
+		}
+		// En Maroto v2, para simular borde en celda, podemos usar simplemente texto por ahora
+		// Ya que la implementación de bordes exactos por celda requiere layouts complejos.
+		// Usaremos formato "Label: Value"
+		return text.New(fmt.Sprintf("%s: %s", label, value), props.Text{Size: 8, Align: align.Left, Left: 2})
+	}
+
 	// -- I. DATOS PERSONALES --
-	m.AddRows(row.New(10).Add(col.New(12).Add(text.New("I. DATOS PERSONALES", props.Text{
-		Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
-	}))))
+	addSectionTitle("I. DATOS PERSONALES")
 
 	m.AddRows(
 		row.New(6).Add(
-			col.New(4).Add(addProp("DNI", usuario.Dni)),
-			col.New(8).Add(addProp("Apellidos y Nombres", fmt.Sprintf("%s %s %s", usuario.ApellidoPaterno, usuario.ApellidoMaterno, usuario.Nombres))),
+			col.New(3).Add(addLabelValue("DNI", usuario.Dni)),
+			col.New(5).Add(addLabelValue("Apellidos", fmt.Sprintf("%s %s", usuario.ApellidoPaterno, usuario.ApellidoMaterno))),
+			col.New(4).Add(addLabelValue("Nombres", usuario.Nombres)),
 		),
 		row.New(6).Add(
-			col.New(4).Add(addProp("Fecha Nacimiento", usuario.FechaNacimiento)),
-			col.New(4).Add(addProp("Sexo", usuario.Sexo)),
-			col.New(4).Add(addProp("Estado Civil", usuario.EstadoCivil)),
+			col.New(3).Add(addLabelValue("F. Nacimiento", usuario.FechaNacimiento)),
+			col.New(3).Add(addLabelValue("Sexo", usuario.Sexo)),
+			col.New(3).Add(addLabelValue("Estado Civil", usuario.EstadoCivil)),
+			col.New(3).Add(addLabelValue("G. Sanguíneo", usuario.GrupoSanguineo)),
 		),
 		row.New(6).Add(
-			col.New(4).Add(addProp("Licencia Conducir", usuario.LicenciaConducir)),
-			col.New(4).Add(addProp("Categoría Licencia", usuario.CategoriaLicencia)),
-			col.New(4).Add(addProp("Grupo Sanguíneo", usuario.GrupoSanguineo)),
+			col.New(3).Add(addLabelValue("Licencia", usuario.LicenciaConducir)),
+			col.New(3).Add(addLabelValue("Cat. Licencia", usuario.CategoriaLicencia)),
 		),
 		row.New(6).Add(
-			col.New(12).Add(addProp("Dirección", usuario.DireccionDomicilio)),
+			col.New(12).Add(addLabelValue("Dirección Domicilio", usuario.DireccionDomicilio)),
 		),
 		row.New(6).Add(
-			col.New(12).Add(addProp("Lugar Nacimiento", fmt.Sprintf("%s - %s - %s", usuario.LugarNacimientoDepartamento, usuario.LugarNacimientoProvincia, usuario.LugarNacimientoDistrito))),
+			col.New(12).Add(addLabelValue("Lugar Nacimiento", fmt.Sprintf("%s - %s - %s", usuario.LugarNacimientoDepartamento, usuario.LugarNacimientoProvincia, usuario.LugarNacimientoDistrito))),
 		),
+		row.New(5),
 	)
 
-	m.AddRows(row.New(5))
-
-	// -- II. DATOS DE CONTACTO Y EMERGENCIA --
-	m.AddRows(row.New(10).Add(col.New(12).Add(text.New("II. CONTACTO Y EMERGENCIA", props.Text{
-		Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
-	}))))
-
+	// -- II. CONTACTO Y EMERGENCIA --
+	addSectionTitle("II. CONTACTO Y EMERGENCIA")
 	m.AddRows(
 		row.New(6).Add(
-			col.New(6).Add(addProp("Teléfono", usuario.Telefono)),
-			col.New(6).Add(addProp("Email", usuario.Email)),
+			col.New(4).Add(addLabelValue("Teléfono", usuario.Telefono)),
+			col.New(4).Add(addLabelValue("Email", usuario.Email)),
+		),
+		row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getTextColor(), Thickness: 0.5}))), // Separador
+		row.New(6).Add(
+			col.New(6).Add(addLabelValue("Contacto Emergencia", usuario.ContactoNombre)),
+			col.New(3).Add(addLabelValue("Parentesco", usuario.ContactoParentesco)),
+			col.New(3).Add(addLabelValue("Celular", usuario.ContactoCelular)),
 		),
 		row.New(6).Add(
-			col.New(6).Add(addProp("Contacto Emergencia", usuario.ContactoNombre)),
-			col.New(3).Add(addProp("Parentesco", usuario.ContactoParentesco)),
-			col.New(3).Add(addProp("Celular", usuario.ContactoCelular)),
+			col.New(12).Add(addLabelValue("Dirección Emergencia", usuario.ContactoDireccion)),
 		),
-		row.New(6).Add(
-			col.New(12).Add(addProp("Dirección Emergencia", usuario.ContactoDireccion)),
-		),
+		row.New(5),
 	)
-
-	m.AddRows(row.New(5))
 
 	// -- III. DATOS LABORALES --
-	m.AddRows(row.New(10).Add(col.New(12).Add(text.New("III. DATOS LABORALES", props.Text{
-		Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
-	}))))
-
+	addSectionTitle("III. DATOS LABORALES")
 	m.AddRows(
 		row.New(6).Add(
-			col.New(4).Add(addProp("Puesto Actual", usuario.PuestoActual)),
-			col.New(4).Add(addProp("Lugar Trabajo", usuario.LugarTrabajo)),
-			col.New(4).Add(addProp("Fecha Ingreso", usuario.FechaIngreso)),
+			col.New(4).Add(addLabelValue("Puesto", usuario.PuestoActual)),
+			col.New(4).Add(addLabelValue("Lugar", usuario.LugarTrabajo)),
+			col.New(4).Add(addLabelValue("F. Ingreso", usuario.FechaIngreso)),
 		),
 		row.New(6).Add(
-			col.New(4).Add(addProp("Régimen Pensionario", usuario.RegimenPensionario)),
-			col.New(4).Add(addProp("AFP/ONP", usuario.AfpNombre+" "+usuario.Cuspp)),
-			col.New(4).Add(addProp("Regimen Salud", usuario.RegimenSalud)),
+			col.New(4).Add(addLabelValue("Régimen Pénsion", usuario.RegimenPensionario)),
+			col.New(4).Add(addLabelValue("AFP/ONP", usuario.AfpNombre+" "+usuario.Cuspp)),
+			col.New(4).Add(addLabelValue("Salud", usuario.RegimenSalud)),
 		),
 		row.New(6).Add(
-			col.New(4).Add(addProp("Situación Contractual", usuario.SituacionContractual)),
-			col.New(4).Add(addProp("Autoriza BCP", formatBool(usuario.AutorizaBcp))),
-			col.New(4).Add(addProp("Autoriza CTS BCP", formatBool(usuario.AutorizaCtsBcp))),
+			col.New(12).Add(addLabelValue("Situación Contractual", usuario.SituacionContractual)),
 		),
-		row.New(6).Add(
-			col.New(12).Add(addProp("Otro Banco", fmt.Sprintf("%s (%s - CCI: %s)", usuario.OtroBancoNombre, usuario.OtroBancoCuenta, usuario.OtroBancoCci))),
-		),
+		row.New(5),
 	)
 
+	// -- IV. APERTURA DE CUENTAS --
+	addSectionTitle("IV. APERTURA DE CUENTAS")
+	m.AddRows(
+		row.New(6).Add(
+			col.New(6).Add(addLabelValue("Autoriza Cuenta Sueldo BCP", formatBool(usuario.AutorizaBcp))),
+			col.New(6).Add(addLabelValue("Autoriza CTS BCP", formatBool(usuario.AutorizaCtsBcp))),
+		),
+	)
+	if usuario.AutorizaOtroBanco {
+		m.AddRows(row.New(6).Add(col.New(12).Add(addLabelValue("Otro Banco", fmt.Sprintf("%s (Cta: %s / CCI: %s)", usuario.OtroBancoNombre, usuario.OtroBancoCuenta, usuario.OtroBancoCci)))))
+	}
 	m.AddRows(row.New(5))
 
-	// -- IV. EDUCACIÓN --
-	m.AddRows(row.New(10).Add(col.New(12).Add(text.New("IV. EDUCACIÓN", props.Text{
-		Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
-	}))))
+	// -- V. DATOS FAMILIARES --
+	addSectionTitle("V. DATOS FAMILIARES")
 
+	// Cónyuge Table
+	m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Datos del Cónyuge / Conviviente", props.Text{Style: fontstyle.Bold, Size: 9}))))
+	// Header Table
+	m.AddRows(row.New(6).Add(
+		col.New(6).Add(text.New("Apellidos y Nombres", headerTextStyle)),
+		col.New(3).Add(text.New("DNI", headerTextStyle)),
+		col.New(3).Add(text.New("F. Nacimiento", headerTextStyle)),
+	))
+	m.AddRows(row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getTextColor(), Thickness: 0.5}))))
+	// Data or Empty
+	if usuario.DatosConyuge != nil && usuario.DatosConyuge.ApellidosNombres != "" {
+		m.AddRows(row.New(5).Add(
+			col.New(6).Add(text.New(usuario.DatosConyuge.ApellidosNombres, cellTextStyle)),
+			col.New(3).Add(text.New(usuario.DatosConyuge.Dni, cellTextStyle)),
+			col.New(3).Add(text.New(usuario.DatosConyuge.FechaNacimiento, cellTextStyle)),
+		))
+	} else {
+		m.AddRows(row.New(5).Add(col.New(12).Add(text.New("- Sin información -", cellTextStyle))))
+	}
+	m.AddRows(row.New(5))
+
+	// Hijos Table
+	m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Hijos", props.Text{Style: fontstyle.Bold, Size: 9}))))
+	m.AddRows(row.New(6).Add(
+		col.New(6).Add(text.New("Apellidos y Nombres", headerTextStyle)),
+		col.New(2).Add(text.New("DNI", headerTextStyle)),
+		col.New(2).Add(text.New("F. Nac", headerTextStyle)),
+		col.New(2).Add(text.New("Edad", headerTextStyle)),
+	))
+	m.AddRows(row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getTextColor(), Thickness: 0.5}))))
+	if len(usuario.Hijos) > 0 {
+		for _, h := range usuario.Hijos {
+			m.AddRows(row.New(5).Add(
+				col.New(6).Add(text.New(h.ApellidosNombres, cellTextStyle)),
+				col.New(2).Add(text.New(h.Dni, cellTextStyle)),
+				col.New(2).Add(text.New(h.FechaNacimiento, cellTextStyle)),
+				col.New(2).Add(text.New(fmt.Sprintf("%d", h.Edad), cellTextStyle)),
+			))
+		}
+	} else {
+		m.AddRows(row.New(5).Add(col.New(12).Add(text.New("- Sin hijos registrados -", cellTextStyle))))
+	}
+	m.AddRows(row.New(5))
+
+	// -- VI. EDUCACIÓN --
+	addSectionTitle("VI. EDUCACIÓN")
+
+	// Basica
+	m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Educación Básica", props.Text{Style: fontstyle.Bold, Size: 9}))))
+	m.AddRows(row.New(6).Add(
+		col.New(2).Add(text.New("Nivel", headerTextStyle)),
+		col.New(5).Add(text.New("Institución", headerTextStyle)),
+		col.New(2).Add(text.New("Desde", headerTextStyle)),
+		col.New(2).Add(text.New("Hasta", headerTextStyle)),
+		col.New(1).Add(text.New("Comp.", headerTextStyle)),
+	))
+	m.AddRows(row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getTextColor(), Thickness: 0.5}))))
 	if len(usuario.EducacionBasica) > 0 {
-		m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Educación Básica:", props.Text{Style: fontstyle.Bold, Size: 9}))))
-		for _, edu := range usuario.EducacionBasica {
+		for _, e := range usuario.EducacionBasica {
 			m.AddRows(row.New(5).Add(
-				col.New(12).Add(text.New(fmt.Sprintf("%s - %s (%s - %s) Completa: %s", edu.Nivel, edu.CentroEstudios, edu.Desde, edu.Hasta, formatBool(edu.Completa)), props.Text{Size: 8})),
+				col.New(2).Add(text.New(e.Nivel, cellTextStyle)),
+				col.New(5).Add(text.New(e.CentroEstudios, cellTextStyle)),
+				col.New(2).Add(text.New(e.Desde, cellTextStyle)),
+				col.New(2).Add(text.New(e.Hasta, cellTextStyle)),
+				col.New(1).Add(text.New(formatBool(e.Completa), cellTextStyle)),
 			))
 		}
+	} else {
+		m.AddRows(row.New(5).Add(col.New(12).Add(text.New("- Sin información -", cellTextStyle))))
 	}
-	if len(usuario.EducacionSuperior) > 0 {
-		m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Educación Superior:", props.Text{Style: fontstyle.Bold, Size: 9}))))
-		for _, edu := range usuario.EducacionSuperior {
-			m.AddRows(row.New(5).Add(
-				col.New(12).Add(text.New(fmt.Sprintf("%s en %s (%s - %s) - %s. Grado: %s", edu.Nivel, edu.CentroEstudios, edu.Desde, edu.Hasta, edu.Especialidad, edu.GradoAcademico), props.Text{Size: 8})),
-			))
-		}
-	}
-
 	m.AddRows(row.New(5))
 
-	// -- V. CAPACITACIONES --
-	if len(usuario.Capacitaciones) > 0 {
-		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("V. CAPACITACIONES", props.Text{
-			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
-		}))))
-		for _, cap := range usuario.Capacitaciones {
+	// Superior
+	m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Educación Superior", props.Text{Style: fontstyle.Bold, Size: 9}))))
+	m.AddRows(row.New(6).Add(
+		col.New(2).Add(text.New("Nivel", headerTextStyle)),
+		col.New(3).Add(text.New("Institución", headerTextStyle)),
+		col.New(3).Add(text.New("Especialidad", headerTextStyle)),
+		col.New(2).Add(text.New("Periodo", headerTextStyle)),
+		col.New(2).Add(text.New("Grado", headerTextStyle)),
+	))
+	m.AddRows(row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getTextColor(), Thickness: 0.5}))))
+	if len(usuario.EducacionSuperior) > 0 {
+		for _, e := range usuario.EducacionSuperior {
 			m.AddRows(row.New(5).Add(
-				col.New(12).Add(text.New(fmt.Sprintf("- %s (%s) - %d Horas", cap.Nombre, cap.Institucion, cap.Horas), props.Text{Size: 8})),
+				col.New(2).Add(text.New(e.Nivel, cellTextStyle)),
+				col.New(3).Add(text.New(e.CentroEstudios, cellTextStyle)),
+				col.New(3).Add(text.New(e.Especialidad, cellTextStyle)),
+				col.New(2).Add(text.New(e.Desde+"-"+e.Hasta, cellTextStyle)),
+				col.New(2).Add(text.New(e.GradoAcademico, cellTextStyle)),
 			))
 		}
-		m.AddRows(row.New(5))
+	} else {
+		m.AddRows(row.New(5).Add(col.New(12).Add(text.New("- Sin información -", cellTextStyle))))
 	}
+	m.AddRows(row.New(5))
 
-	// -- VI. EXPERIENCIA LABORAL --
+	// -- VII. EXPERIENCIA LABORAL --
+	addSectionTitle("VII. EXPERIENCIA LABORAL")
+	m.AddRows(row.New(6).Add(
+		col.New(3).Add(text.New("Empresa", headerTextStyle)),
+		col.New(3).Add(text.New("Cargo", headerTextStyle)),
+		col.New(2).Add(text.New("F. Inicio", headerTextStyle)),
+		col.New(2).Add(text.New("F. Fin", headerTextStyle)),
+		col.New(2).Add(text.New("Motivo", headerTextStyle)),
+	))
+	m.AddRows(row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getTextColor(), Thickness: 0.5}))))
 	if len(usuario.ExperienciaLaboral) > 0 {
-		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("VI. EXPERIENCIA LABORAL", props.Text{
-			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
-		}))))
-		for _, exp := range usuario.ExperienciaLaboral {
+		for _, ex := range usuario.ExperienciaLaboral {
 			m.AddRows(row.New(5).Add(
-				col.New(12).Add(text.New(fmt.Sprintf("- %s en %s (%s al %s) - %s. Motivo: %s", exp.Cargo, exp.Empresa, exp.FechaIngreso, exp.FechaCese, exp.TiempoPermanencia, exp.MotivoCese), props.Text{Size: 8})),
+				col.New(3).Add(text.New(ex.Empresa, cellTextStyle)),
+				col.New(3).Add(text.New(ex.Cargo, cellTextStyle)),
+				col.New(2).Add(text.New(ex.FechaIngreso, cellTextStyle)),
+				col.New(2).Add(text.New(ex.FechaCese, cellTextStyle)),
+				col.New(2).Add(text.New(ex.MotivoCese, cellTextStyle)),
 			))
 		}
-		m.AddRows(row.New(5))
+	} else {
+		m.AddRows(row.New(5).Add(col.New(12).Add(text.New("- Sin experiencia registrada -", cellTextStyle))))
 	}
+	m.AddRows(row.New(5))
 
-	// -- VII. IDIOMAS --
+	// -- VIII. IDIOMAS --
+	addSectionTitle("VIII. IDIOMAS")
+	m.AddRows(row.New(6).Add(
+		col.New(3).Add(text.New("Idioma", headerTextStyle)),
+		col.New(3).Add(text.New("Lee", headerTextStyle)),
+		col.New(3).Add(text.New("Habla", headerTextStyle)),
+		col.New(3).Add(text.New("Escribe", headerTextStyle)),
+	))
+	m.AddRows(row.New(1).Add(col.New(12).Add(line.New(props.Line{Color: getTextColor(), Thickness: 0.5}))))
 	if len(usuario.Idiomas) > 0 {
-		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("VII. IDIOMAS", props.Text{
-			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
-		}))))
-		for _, idi := range usuario.Idiomas {
+		for _, i := range usuario.Idiomas {
 			m.AddRows(row.New(5).Add(
-				col.New(12).Add(text.New(fmt.Sprintf("- %s: Lee(%s), Habla(%s), Escribe(%s)", idi.Idioma, idi.Lee, idi.Habla, idi.Escribe), props.Text{Size: 8})),
+				col.New(3).Add(text.New(i.Idioma, cellTextStyle)),
+				col.New(3).Add(text.New(i.Lee, cellTextStyle)),
+				col.New(3).Add(text.New(i.Habla, cellTextStyle)),
+				col.New(3).Add(text.New(i.Escribe, cellTextStyle)),
 			))
 		}
-		m.AddRows(row.New(5))
-	}
-
-	// -- VIII. INFORMACIÓN FAMILIAR --
-	if usuario.DatosConyuge != nil || len(usuario.Hijos) > 0 || len(usuario.Padres) > 0 {
-		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("VIII. INFORMACIÓN FAMILIAR", props.Text{
-			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
-		}))))
-
-		if usuario.DatosConyuge != nil && usuario.DatosConyuge.ApellidosNombres != "" {
-			m.AddRows(
-				row.New(6).Add(
-					col.New(12).Add(text.New("Cónyuge / Conviviente:", props.Text{Style: fontstyle.Bold, Size: 9})),
-				),
-				row.New(6).Add(
-					col.New(6).Add(addProp("Nombre", usuario.DatosConyuge.ApellidosNombres)),
-					col.New(3).Add(addProp("DNI", usuario.DatosConyuge.Dni)),
-					col.New(3).Add(addProp("F. Nacimiento", usuario.DatosConyuge.FechaNacimiento)),
-				),
-			)
-		}
-
-		if len(usuario.Hijos) > 0 {
-			m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Hijos:", props.Text{Style: fontstyle.Bold, Size: 9}))))
-			for i, hijo := range usuario.Hijos {
-				m.AddRows(row.New(5).Add(
-					col.New(12).Add(text.New(fmt.Sprintf("%d. %s (DNI: %s) - F. Nac: %s", i+1, hijo.ApellidosNombres, hijo.Dni, hijo.FechaNacimiento), props.Text{Size: 8})),
-				))
-			}
-		}
-
-		if len(usuario.Padres) > 0 {
-			m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Padres:", props.Text{Style: fontstyle.Bold, Size: 9}))))
-			for i, padre := range usuario.Padres {
-				vive := "No"
-				if padre.Vive {
-					vive = "Si"
-				}
-				m.AddRows(row.New(5).Add(
-					col.New(12).Add(text.New(fmt.Sprintf("%d. %s - F. Nac: %s - Ocupación: %s - Vive: %s", i+1, padre.ApellidosNombres, padre.FechaNacimiento, padre.Ocupacion, vive), props.Text{Size: 8})),
-				))
-			}
-		}
+	} else {
+		m.AddRows(row.New(5).Add(col.New(12).Add(text.New("- Sin idiomas registrados -", cellTextStyle))))
 	}
 
 	// FOOTER
