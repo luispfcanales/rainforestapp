@@ -186,7 +186,7 @@ func (h *UsuarioHandler) GetUsuarioPDF(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generar PDF individual
-	pdfBytes, err := h.pdfGen.GenerateUsuarioPDFSimple(ctx, usuario)
+	pdfBytes, err := h.pdfGen.GenerateUsuarioPDF(ctx, usuario)
 	if err != nil {
 		log.Printf("Error generando PDF: %v", err)
 		response.InternalServerError(w, "Error generando PDF")

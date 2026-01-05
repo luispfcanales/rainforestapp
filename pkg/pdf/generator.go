@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -66,193 +67,214 @@ func decodeBase64Image(base64Str string) ([]byte, error) {
 	return imgBytes, nil
 }
 
-// GenerateUsuarioPDFSimple - Versión simple con imagen en cabecera
-func (g *PDFGenerator) GenerateUsuarioPDFSimple(ctx context.Context, usuario *models.Usuario) ([]byte, error) {
+// GenerateUsuarioPDF - Versión mejorada con diseño profesional
+func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.Usuario) ([]byte, error) {
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
-		WithOrientation(orientation.Horizontal).
-		WithLeftMargin(20).
+		WithOrientation(orientation.Vertical).
+		WithLeftMargin(15).
 		WithTopMargin(15).
-		WithRightMargin(20).
+		WithRightMargin(15).
 		WithBottomMargin(15).
 		Build()
 
 	m := maroto.New(cfg)
 
-	// Header con imagen a la derecha
+	// -- HEADER --
 	m.AddRows(
-		row.New(25).Add(
-			// Columna para el título (izquierda - 9 columnas)
-			col.New(9).Add(
+		row.New(30).Add(
+			// Logo (Izquierda)
+			col.New(3).Add(
+				func() core.Component {
+					// Intentar cargar el logo
+					imgBytes, err := os.ReadFile("rainforest.png")
+					if err == nil {
+						return image.NewFromBytes(imgBytes, extension.Png, props.Rect{
+							Center:  true,
+							Percent: 90,
+						})
+					}
+					return text.New("LOGO", props.Text{
+						Style: fontstyle.Bold,
+						Align: align.Center,
+						Top:   10,
+					})
+				}(),
+			),
+			// Título (Centro)
+			col.New(6).Add(
 				text.New("RAINFOREST ENTERPRISE", props.Text{
-					Size:  18,
+					Size:  16,
 					Style: fontstyle.Bold,
-					Align: align.Left,
+					Align: align.Center,
 					Color: getHeaderColor(),
 					Top:   5,
 				}),
-				text.New("FICHA DE USUARIO", props.Text{
+				text.New("FICHA DE DATOS DEL PERSONAL", props.Text{
 					Size:  12,
-					Align: align.Left,
-					Top:   12,
+					Style: fontstyle.Bold,
+					Align: align.Center,
+					Top:   15,
 				}),
 			),
-			// Columna para la foto carnet (derecha - 3 columnas)
+			// Foto (Derecha)
 			col.New(3).Add(
 				func() core.Component {
 					if usuario.Foto != "" && usuario.Foto != "null" && usuario.Foto != "undefined" {
 						imgBytes, err := decodeBase64Image(usuario.Foto)
 						if err == nil {
-							// Especificar el tipo de extensión (JPEG o PNG)
 							return image.NewFromBytes(imgBytes, extension.Jpg, props.Rect{
-								Percent: 80,
+								Percent: 95,
 								Center:  true,
 							})
 						}
 					}
-
-					// Si no hay foto, mostrar placeholder
-					return text.New("Sin Foto", props.Text{
-						Size:  8,
+					// Cuadro "Sin Foto"
+					return text.New("[ SIN FOTO ]", props.Text{
+						Size:  10,
+						Style: fontstyle.BoldItalic,
 						Align: align.Center,
-						Color: getTextColor(),
+						Top:   10,
+						Color: &props.Color{Red: 150, Green: 150, Blue: 150},
 					})
 				}(),
 			),
 		),
 	)
 
-	// Separator
 	m.AddRows(
-		row.New(5).Add(
-			col.New(12).Add(
-				line.New(props.Line{
-					Color:     getHeaderColor(),
-					Thickness: 1,
-				}),
-			),
+		row.New(10), // Espacio
+		row.New(2).Add(
+			col.New(12).Add(line.New(props.Line{Color: getHeaderColor(), Thickness: 2})),
+		),
+		row.New(5),
+	)
+
+	// Helper para pares etiqueta-valor
+	addProp := func(label, value string) core.Component {
+		return text.New(fmt.Sprintf("%s: %s", label, value), props.Text{
+			Size:  9,
+			Align: align.Left,
+		})
+	}
+
+	// -- I. DATOS PERSONALES --
+	m.AddRows(row.New(10).Add(col.New(12).Add(text.New("I. DATOS PERSONALES", props.Text{
+		Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
+	}))))
+
+	m.AddRows(
+		row.New(6).Add(
+			col.New(4).Add(addProp("DNI", usuario.Dni)),
+			col.New(8).Add(addProp("Apellidos y Nombres", fmt.Sprintf("%s %s %s", usuario.ApellidoPaterno, usuario.ApellidoMaterno, usuario.Nombres))),
+		),
+		row.New(6).Add(
+			col.New(4).Add(addProp("Fecha Nacimiento", usuario.FechaNacimiento)),
+			col.New(4).Add(addProp("Sexo", usuario.Sexo)),
+			col.New(4).Add(addProp("Estado Civil", usuario.EstadoCivil)),
+		),
+		row.New(6).Add(
+			col.New(12).Add(addProp("Dirección", usuario.DireccionDomicilio)),
+		),
+		row.New(6).Add(
+			col.New(12).Add(addProp("Lugar Nacimiento", fmt.Sprintf("%s - %s - %s", usuario.LugarNacimientoDepartamento, usuario.LugarNacimientoProvincia, usuario.LugarNacimientoDistrito))),
 		),
 	)
 
-	// Title
+	m.AddRows(row.New(5))
+
+	// -- II. DATOS DE CONTACTO Y EMERGENCIA --
+	m.AddRows(row.New(10).Add(col.New(12).Add(text.New("II. CONTACTO Y EMERGENCIA", props.Text{
+		Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
+	}))))
+
+	m.AddRows(
+		row.New(6).Add(
+			col.New(6).Add(addProp("Teléfono", usuario.Telefono)),
+			col.New(6).Add(addProp("Email", usuario.Email)),
+		),
+		row.New(6).Add(
+			col.New(6).Add(addProp("Contacto Emergencia", usuario.ContactoNombre)),
+			col.New(3).Add(addProp("Parentesco", usuario.ContactoParentesco)),
+			col.New(3).Add(addProp("Celular", usuario.ContactoCelular)),
+		),
+		row.New(6).Add(
+			col.New(12).Add(addProp("Dirección Emergencia", usuario.ContactoDireccion)),
+		),
+	)
+
+	m.AddRows(row.New(5))
+
+	// -- III. DATOS LABORALES --
+	m.AddRows(row.New(10).Add(col.New(12).Add(text.New("III. DATOS LABORALES", props.Text{
+		Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
+	}))))
+
+	m.AddRows(
+		row.New(6).Add(
+			col.New(4).Add(addProp("Puesto Actual", usuario.PuestoActual)),
+			col.New(4).Add(addProp("Lugar Trabajo", usuario.LugarTrabajo)),
+			col.New(4).Add(addProp("Fecha Ingreso", usuario.FechaIngreso)),
+		),
+		row.New(6).Add(
+			col.New(4).Add(addProp("Régimen Pensionario", usuario.RegimenPensionario)),
+			col.New(4).Add(addProp("AFP/ONP", usuario.AfpNombre+" "+usuario.Cuspp)), // Simple concat if exists
+			col.New(4).Add(addProp("Regimen Salud", usuario.RegimenSalud)),
+		),
+		row.New(6).Add(
+			col.New(6).Add(addProp("Autoriza BCP", fmt.Sprintf("%v", usuario.AutorizaBcp))),
+			col.New(6).Add(addProp("Autoriza CTS BCP", fmt.Sprintf("%v", usuario.AutorizaCtsBcp))),
+		),
+	)
+
+	m.AddRows(row.New(5))
+
+	// -- IV. INFORMACIÓN FAMILIAR --
+	if usuario.DatosConyuge != nil || len(usuario.Hijos) > 0 {
+		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("IV. INFORMACIÓN FAMILIAR", props.Text{
+			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
+		}))))
+
+		if usuario.DatosConyuge != nil && usuario.DatosConyuge.ApellidosNombres != "" {
+			m.AddRows(
+				row.New(6).Add(
+					col.New(12).Add(text.New("Cónyuge / Conviviente:", props.Text{Style: fontstyle.Bold, Size: 9})),
+				),
+				row.New(6).Add(
+					col.New(6).Add(addProp("Nombre", usuario.DatosConyuge.ApellidosNombres)),
+					col.New(3).Add(addProp("DNI", usuario.DatosConyuge.Dni)),
+					col.New(3).Add(addProp("F. Nacimiento", usuario.DatosConyuge.FechaNacimiento)),
+				),
+			)
+		}
+
+		if len(usuario.Hijos) > 0 {
+			m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Hijos:", props.Text{Style: fontstyle.Bold, Size: 9}))))
+			for i, hijo := range usuario.Hijos {
+				m.AddRows(row.New(5).Add(
+					col.New(12).Add(text.New(fmt.Sprintf("%d. %s (DNI: %s) - F. Nac: %s", i+1, hijo.ApellidosNombres, hijo.Dni, hijo.FechaNacimiento), props.Text{Size: 8})),
+				))
+			}
+		}
+	}
+
+	// FOOTER
 	m.AddRows(
 		row.New(15).Add(
 			col.New(12).Add(
-				text.New("INFORMACIÓN DEL USUARIO", props.Text{
-					Size:  14,
-					Style: fontstyle.Bold,
-					Align: align.Center,
-				}),
+				line.New(props.Line{Color: getHeaderColor(), Thickness: 1}),
 			),
 		),
-	)
-
-	// User Data
-	m.AddRows(
-		row.New(7).Add(
-			col.New(4).Add(
-				text.New("ID:", props.Text{
-					Size:  9,
-					Style: fontstyle.Bold,
-				}),
-			),
-			col.New(8).Add(
-				text.New(usuario.ID, props.Text{
-					Size: 9,
-				}),
-			),
-		),
-		row.New(7).Add(
-			col.New(4).Add(
-				text.New("Nombre:", props.Text{
-					Size:  9,
-					Style: fontstyle.Bold,
-				}),
-			),
-			col.New(8).Add(
-				text.New(usuario.Nombres, props.Text{
-					Size: 9,
-				}),
-			),
-		),
-		row.New(7).Add(
-			col.New(4).Add(
-				text.New("Apellido:", props.Text{
-					Size:  9,
-					Style: fontstyle.Bold,
-				}),
-			),
-			col.New(8).Add(
-				text.New(fmt.Sprintf("%s %s", usuario.ApellidoPaterno, usuario.ApellidoMaterno), props.Text{
-					Size: 9,
-				}),
-			),
-		),
-		row.New(7).Add(
-			col.New(4).Add(
-				text.New("Email:", props.Text{
-					Size:  9,
-					Style: fontstyle.Bold,
-				}),
-			),
-			col.New(8).Add(
-				text.New(usuario.Email, props.Text{
-					Size: 9,
-				}),
-			),
-		),
-		row.New(7).Add(
-			col.New(4).Add(
-				text.New("Teléfono:", props.Text{
-					Size:  9,
-					Style: fontstyle.Bold,
-				}),
-			),
-			col.New(8).Add(
-				text.New(usuario.Telefono, props.Text{
-					Size: 9,
-				}),
-			),
-		),
-		row.New(7).Add(
-			col.New(4).Add(
-				text.New("Registrado:", props.Text{
-					Size:  9,
-					Style: fontstyle.Bold,
-				}),
-			),
-			col.New(8).Add(
-				text.New(usuario.CreatedAt.Format("02/01/2006 15:04"), props.Text{
-					Size: 9,
-				}),
-			),
-		),
-	)
-
-	// Footer
-	m.AddRows(
-		row.New(20).Add(col.New(12)),
-		row.New(8).Add(
+		row.New(5).Add(
 			col.New(12).Add(
-				text.New(fmt.Sprintf("Generado el %s", time.Now().Format("02/01/2006 15:04")), props.Text{
-					Size:  8,
-					Align: align.Center,
-					Color: getTextColor(),
-				}),
-			),
-		),
-		row.New(6).Add(
-			col.New(12).Add(
-				text.New("Rainforest Enterprise - Sistema de Gestión", props.Text{
-					Size:  7,
-					Align: align.Center,
-					Color: getTextColor(),
+				text.New(fmt.Sprintf("Generado el: %s", time.Now().Format("02/01/2006 15:04:05")), props.Text{
+					Size: 8, Align: align.Right, Color: getTextColor(),
 				}),
 			),
 		),
 	)
 
-	// Generar PDF
+	// Generar
 	document, err := m.Generate()
 	if err != nil {
 		return nil, fmt.Errorf("error generando PDF: %w", err)
