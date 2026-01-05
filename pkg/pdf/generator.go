@@ -86,9 +86,18 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 			// Logo (Izquierda)
 			col.New(3).Add(
 				func() core.Component {
-					// Intentar cargar el logo
-					imgBytes, err := os.ReadFile("rainforest.png")
-					if err == nil {
+					// Intentar cargar el logo - búsqueda en varias rutas
+					paths := []string{"rainforest.png", "./rainforest.png", "../../rainforest.png", "../rainforest.png"}
+					var imgBytes []byte
+					var err error
+					for _, path := range paths {
+						imgBytes, err = os.ReadFile(path)
+						if err == nil {
+							break
+						}
+					}
+
+					if len(imgBytes) > 0 {
 						return image.NewFromBytes(imgBytes, extension.Png, props.Rect{
 							Center:  true,
 							Percent: 90,
@@ -143,7 +152,7 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 	)
 
 	m.AddRows(
-		row.New(10), // Espacio
+		row.New(5),
 		row.New(2).Add(
 			col.New(12).Add(line.New(props.Line{Color: getHeaderColor(), Thickness: 2})),
 		),
@@ -152,10 +161,20 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 
 	// Helper para pares etiqueta-valor
 	addProp := func(label, value string) core.Component {
+		if value == "" {
+			value = "-"
+		}
 		return text.New(fmt.Sprintf("%s: %s", label, value), props.Text{
 			Size:  9,
 			Align: align.Left,
 		})
+	}
+
+	formatBool := func(b bool) string {
+		if b {
+			return "Si"
+		}
+		return "No"
 	}
 
 	// -- I. DATOS PERSONALES --
@@ -172,6 +191,11 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 			col.New(4).Add(addProp("Fecha Nacimiento", usuario.FechaNacimiento)),
 			col.New(4).Add(addProp("Sexo", usuario.Sexo)),
 			col.New(4).Add(addProp("Estado Civil", usuario.EstadoCivil)),
+		),
+		row.New(6).Add(
+			col.New(4).Add(addProp("Licencia Conducir", usuario.LicenciaConducir)),
+			col.New(4).Add(addProp("Categoría Licencia", usuario.CategoriaLicencia)),
+			col.New(4).Add(addProp("Grupo Sanguíneo", usuario.GrupoSanguineo)),
 		),
 		row.New(6).Add(
 			col.New(12).Add(addProp("Dirección", usuario.DireccionDomicilio)),
@@ -218,20 +242,87 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 		),
 		row.New(6).Add(
 			col.New(4).Add(addProp("Régimen Pensionario", usuario.RegimenPensionario)),
-			col.New(4).Add(addProp("AFP/ONP", usuario.AfpNombre+" "+usuario.Cuspp)), // Simple concat if exists
+			col.New(4).Add(addProp("AFP/ONP", usuario.AfpNombre+" "+usuario.Cuspp)),
 			col.New(4).Add(addProp("Regimen Salud", usuario.RegimenSalud)),
 		),
 		row.New(6).Add(
-			col.New(6).Add(addProp("Autoriza BCP", fmt.Sprintf("%v", usuario.AutorizaBcp))),
-			col.New(6).Add(addProp("Autoriza CTS BCP", fmt.Sprintf("%v", usuario.AutorizaCtsBcp))),
+			col.New(4).Add(addProp("Situación Contractual", usuario.SituacionContractual)),
+			col.New(4).Add(addProp("Autoriza BCP", formatBool(usuario.AutorizaBcp))),
+			col.New(4).Add(addProp("Autoriza CTS BCP", formatBool(usuario.AutorizaCtsBcp))),
+		),
+		row.New(6).Add(
+			col.New(12).Add(addProp("Otro Banco", fmt.Sprintf("%s (%s - CCI: %s)", usuario.OtroBancoNombre, usuario.OtroBancoCuenta, usuario.OtroBancoCci))),
 		),
 	)
 
 	m.AddRows(row.New(5))
 
-	// -- IV. INFORMACIÓN FAMILIAR --
-	if usuario.DatosConyuge != nil || len(usuario.Hijos) > 0 {
-		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("IV. INFORMACIÓN FAMILIAR", props.Text{
+	// -- IV. EDUCACIÓN --
+	m.AddRows(row.New(10).Add(col.New(12).Add(text.New("IV. EDUCACIÓN", props.Text{
+		Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
+	}))))
+
+	if len(usuario.EducacionBasica) > 0 {
+		m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Educación Básica:", props.Text{Style: fontstyle.Bold, Size: 9}))))
+		for _, edu := range usuario.EducacionBasica {
+			m.AddRows(row.New(5).Add(
+				col.New(12).Add(text.New(fmt.Sprintf("%s - %s (%s - %s) Completa: %s", edu.Nivel, edu.CentroEstudios, edu.Desde, edu.Hasta, formatBool(edu.Completa)), props.Text{Size: 8})),
+			))
+		}
+	}
+	if len(usuario.EducacionSuperior) > 0 {
+		m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Educación Superior:", props.Text{Style: fontstyle.Bold, Size: 9}))))
+		for _, edu := range usuario.EducacionSuperior {
+			m.AddRows(row.New(5).Add(
+				col.New(12).Add(text.New(fmt.Sprintf("%s en %s (%s - %s) - %s. Grado: %s", edu.Nivel, edu.CentroEstudios, edu.Desde, edu.Hasta, edu.Especialidad, edu.GradoAcademico), props.Text{Size: 8})),
+			))
+		}
+	}
+
+	m.AddRows(row.New(5))
+
+	// -- V. CAPACITACIONES --
+	if len(usuario.Capacitaciones) > 0 {
+		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("V. CAPACITACIONES", props.Text{
+			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
+		}))))
+		for _, cap := range usuario.Capacitaciones {
+			m.AddRows(row.New(5).Add(
+				col.New(12).Add(text.New(fmt.Sprintf("- %s (%s) - %d Horas", cap.Nombre, cap.Institucion, cap.Horas), props.Text{Size: 8})),
+			))
+		}
+		m.AddRows(row.New(5))
+	}
+
+	// -- VI. EXPERIENCIA LABORAL --
+	if len(usuario.ExperienciaLaboral) > 0 {
+		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("VI. EXPERIENCIA LABORAL", props.Text{
+			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
+		}))))
+		for _, exp := range usuario.ExperienciaLaboral {
+			m.AddRows(row.New(5).Add(
+				col.New(12).Add(text.New(fmt.Sprintf("- %s en %s (%s al %s) - %s. Motivo: %s", exp.Cargo, exp.Empresa, exp.FechaIngreso, exp.FechaCese, exp.TiempoPermanencia, exp.MotivoCese), props.Text{Size: 8})),
+			))
+		}
+		m.AddRows(row.New(5))
+	}
+
+	// -- VII. IDIOMAS --
+	if len(usuario.Idiomas) > 0 {
+		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("VII. IDIOMAS", props.Text{
+			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
+		}))))
+		for _, idi := range usuario.Idiomas {
+			m.AddRows(row.New(5).Add(
+				col.New(12).Add(text.New(fmt.Sprintf("- %s: Lee(%s), Habla(%s), Escribe(%s)", idi.Idioma, idi.Lee, idi.Habla, idi.Escribe), props.Text{Size: 8})),
+			))
+		}
+		m.AddRows(row.New(5))
+	}
+
+	// -- VIII. INFORMACIÓN FAMILIAR --
+	if usuario.DatosConyuge != nil || len(usuario.Hijos) > 0 || len(usuario.Padres) > 0 {
+		m.AddRows(row.New(10).Add(col.New(12).Add(text.New("VIII. INFORMACIÓN FAMILIAR", props.Text{
 			Style: fontstyle.Bold, Size: 11, Color: getHeaderColor(),
 		}))))
 
@@ -253,6 +344,19 @@ func (g *PDFGenerator) GenerateUsuarioPDF(ctx context.Context, usuario *models.U
 			for i, hijo := range usuario.Hijos {
 				m.AddRows(row.New(5).Add(
 					col.New(12).Add(text.New(fmt.Sprintf("%d. %s (DNI: %s) - F. Nac: %s", i+1, hijo.ApellidosNombres, hijo.Dni, hijo.FechaNacimiento), props.Text{Size: 8})),
+				))
+			}
+		}
+
+		if len(usuario.Padres) > 0 {
+			m.AddRows(row.New(6).Add(col.New(12).Add(text.New("Padres:", props.Text{Style: fontstyle.Bold, Size: 9}))))
+			for i, padre := range usuario.Padres {
+				vive := "No"
+				if padre.Vive {
+					vive = "Si"
+				}
+				m.AddRows(row.New(5).Add(
+					col.New(12).Add(text.New(fmt.Sprintf("%d. %s - F. Nac: %s - Ocupación: %s - Vive: %s", i+1, padre.ApellidosNombres, padre.FechaNacimiento, padre.Ocupacion, vive), props.Text{Size: 8})),
 				))
 			}
 		}
