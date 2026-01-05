@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/luispfcanales/rainforestapp/pkg/models"
 	"github.com/luispfcanales/rainforestapp/pkg/repository"
@@ -76,10 +77,20 @@ func (s *UsuarioService) UpdateUsuario(ctx context.Context, id string, req *mode
 	}
 
 	// Actualizar campos
-	existingUsuario.Nombre = req.Nombre
-	existingUsuario.Apellido = req.Apellido
-	existingUsuario.Email = req.Email
-	existingUsuario.Telefono = req.Telefono
+	// Preservar ID y timestamp de creación
+	currentID := existingUsuario.ID
+	createdAt := existingUsuario.CreatedAt
+
+	// Convertir request a modelo con los nuevos datos
+	newUsuario := req.ToUsuario()
+
+	// Actualizar el usuario existente con los nuevos datos
+	*existingUsuario = *newUsuario
+
+	// Restaurar ID y metadatos
+	existingUsuario.ID = currentID
+	existingUsuario.CreatedAt = createdAt
+	existingUsuario.UpdatedAt = time.Now()
 
 	if err := s.repo.Update(ctx, id, existingUsuario); err != nil {
 		return nil, fmt.Errorf("error actualizando usuario: %w", err)

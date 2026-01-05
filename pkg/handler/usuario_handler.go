@@ -195,7 +195,7 @@ func (h *UsuarioHandler) GetUsuarioPDF(w http.ResponseWriter, r *http.Request) {
 
 	// Configurar headers para descarga
 	w.Header().Set("Content-Type", "application/pdf")
-	filename := fmt.Sprintf("usuario_%s_%s_%s.pdf", usuario.Nombre, usuario.Apellido, time.Now().Format("20060102"))
+	filename := fmt.Sprintf("usuario_%s_%s_%s.pdf", usuario.Nombres, usuario.ApellidoPaterno, time.Now().Format("20060102"))
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
 

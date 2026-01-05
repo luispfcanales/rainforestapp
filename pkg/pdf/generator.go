@@ -170,7 +170,7 @@ func (g *PDFGenerator) GenerateUsuarioPDFSimple(ctx context.Context, usuario *mo
 				}),
 			),
 			col.New(8).Add(
-				text.New(usuario.Nombre, props.Text{
+				text.New(usuario.Nombres, props.Text{
 					Size: 9,
 				}),
 			),
@@ -183,7 +183,7 @@ func (g *PDFGenerator) GenerateUsuarioPDFSimple(ctx context.Context, usuario *mo
 				}),
 			),
 			col.New(8).Add(
-				text.New(usuario.Apellido, props.Text{
+				text.New(fmt.Sprintf("%s %s", usuario.ApellidoPaterno, usuario.ApellidoMaterno), props.Text{
 					Size: 9,
 				}),
 			),
