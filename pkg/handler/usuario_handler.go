@@ -48,7 +48,7 @@ func NewUsuarioHandler(cfg *config.Config) (*UsuarioHandler, error) {
 // setupCORS configura los headers CORS
 func setupCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 }
 
