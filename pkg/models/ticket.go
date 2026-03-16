@@ -48,11 +48,12 @@ var (
 	}
 
 	validStatuses = map[string]bool{
-		"nuevo":         true,
-		"en_proceso":    true,
-		"en_revision":   true,
-		"en_cotizacion": true,
-		"cerrado":       true,
+		"nuevo":                 true,
+		"en_proceso":            true,
+		"en_revision":           true,
+		"en_cotizacion":         true,
+		"atendido_parcialmente": true,
+		"cerrado":               true,
 	}
 
 	validTags = map[string]bool{
