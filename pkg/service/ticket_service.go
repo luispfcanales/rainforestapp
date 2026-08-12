@@ -100,6 +100,14 @@ func (s *TicketService) UpdateTicket(ctx context.Context, req *models.UpdateTick
 	existingTicket.Status = req.Status
 	existingTicket.Tags = req.Tags
 	existingTicket.Link = req.Link
+	existingTicket.ThemResponse = req.ThemResponse
+	existingTicket.MyResponse = req.MyResponse
+	existingTicket.RelatedTicketID = req.RelatedTicketID
+	existingTicket.IsPaid = req.IsPaid
+	existingTicket.QuotePDFData = req.QuotePDFData
+	existingTicket.Type = req.Type
+	existingTicket.AssignedTo = req.AssignedTo
+	existingTicket.Observations = req.Observations
 
 	if req.ReportDate != "" {
 		t, _ := time.Parse(time.RFC3339, req.ReportDate)
@@ -117,6 +125,22 @@ func (s *TicketService) UpdateTicket(ctx context.Context, req *models.UpdateTick
 	} else if req.Status != "cerrado" {
 		// Clear closed date if status is no longer cerrado
 		existingTicket.ClosedDate = nil
+	}
+
+	// Handle ThemResponseDate
+	if req.ThemResponseDate != "" {
+		t, _ := time.Parse(time.RFC3339, req.ThemResponseDate)
+		existingTicket.ThemResponseDate = &t
+	} else {
+		existingTicket.ThemResponseDate = nil
+	}
+
+	// Handle MyResponseDate
+	if req.MyResponseDate != "" {
+		t, _ := time.Parse(time.RFC3339, req.MyResponseDate)
+		existingTicket.MyResponseDate = &t
+	} else {
+		existingTicket.MyResponseDate = nil
 	}
 
 	if err := s.repo.Update(ctx, req.ID, existingTicket); err != nil {
@@ -137,4 +161,13 @@ func (s *TicketService) DeleteTicket(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+// DeleteAllTickets deletes every ticket in the collection
+func (s *TicketService) DeleteAllTickets(ctx context.Context) (int, error) {
+	count, err := s.repo.DeleteAll(ctx)
+	if err != nil {
+		return count, fmt.Errorf("error deleting all tickets: %w", err)
+	}
+	return count, nil
 }

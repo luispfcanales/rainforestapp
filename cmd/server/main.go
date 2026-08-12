@@ -52,6 +52,7 @@ func main() {
 	mux.HandleFunc("/api/tickets/status", th.UpdateStatus)
 	mux.HandleFunc("/api/tickets/update", th.UpdateTicket)
 	mux.HandleFunc("/api/tickets/delete", th.DeleteTicket)
+	mux.HandleFunc("/api/tickets/clear", th.ClearTickets)
 
 	// Puerto configurable
 	port := os.Getenv("PORT")
@@ -92,6 +93,7 @@ func main() {
 	log.Printf("  PATCH  /api/tickets/status")
 	log.Printf("  PUT    /api/tickets/update")
 	log.Printf("  DELETE /api/tickets/delete?id=...")
+	log.Printf("  DELETE /api/tickets/clear")
 	log.Printf("Escuchando en http://localhost:%s", port)
 
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {

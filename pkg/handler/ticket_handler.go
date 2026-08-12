@@ -229,3 +229,31 @@ func (h *TicketHandler) DeleteTicket(w http.ResponseWriter, r *http.Request) {
 
 	response.Success(w, "Ticket deleted successfully", nil)
 }
+
+// ClearTickets handles deletion of ALL tickets (dangerous — admin only)
+func (h *TicketHandler) ClearTickets(w http.ResponseWriter, r *http.Request) {
+	setupCORS(w)
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != "DELETE" {
+		response.Error(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+
+	count, err := h.service.DeleteAllTickets(ctx)
+	if err != nil {
+		log.Printf("Error clearing tickets: %v", err)
+		response.InternalServerError(w, "Error clearing tickets: "+err.Error())
+		return
+	}
+
+	log.Printf("Cleared %d tickets from the database", count)
+	response.Success(w, "All tickets cleared successfully", map[string]int{"deleted": count})
+}

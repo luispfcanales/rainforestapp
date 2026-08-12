@@ -118,3 +118,35 @@ func (r *TicketRepository) Delete(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+// DeleteAll removes all tickets from the collection using batch deletes
+func (r *TicketRepository) DeleteAll(ctx context.Context) (int, error) {
+	const batchSize = 500
+	deleted := 0
+
+	for {
+		iter := r.client.Collection(ticketsCollection).Limit(batchSize).Documents(ctx)
+		docs, err := iter.GetAll()
+		if err != nil {
+			return deleted, fmt.Errorf("error getting tickets for deletion: %w", err)
+		}
+		if len(docs) == 0 {
+			break
+		}
+
+		batch := r.client.Batch()
+		for _, doc := range docs {
+			batch.Delete(doc.Ref)
+		}
+		if _, err := batch.Commit(ctx); err != nil {
+			return deleted, fmt.Errorf("error committing batch delete: %w", err)
+		}
+		deleted += len(docs)
+
+		if len(docs) < batchSize {
+			break
+		}
+	}
+
+	return deleted, nil
+}
